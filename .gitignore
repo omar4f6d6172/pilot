@@ -1,0 +1,10 @@
+# Binaries
+bin/
+
+# Temporary/Lock files
+.#*
+*.lck
+
+# OS Artifacts
+debian-nspawn/
+test-os-template/

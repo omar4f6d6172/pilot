@@ -1,6 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2025 Omar Altanbakji <omalton02@gmail.com>
 */
 package cmd
 
@@ -10,18 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pilot",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Control-Plane CLI for systemd socket activation orchestration",
+	Long: `Pilot is a specialized Control-Plane CLI tool designed to orchestrate 
+systemd Socket Activation on Linux systems. 
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+It automates the complex configuration of Linux users, systemd units, 
+PostgreSQL database roles, and Caddy reverse proxy routes to enable 
+resource-efficient, lazy-loaded web service provisioning.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
