@@ -6,13 +6,73 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"os/user"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
 // Variable to store the flag value
 var tenantName string
+
+// CreateUser creates a new system user, enables lingering, and ensures the user service is running
+func CreateUser(username string) error {
+	// 1. Create the user
+	fmt.Printf("👤 Creating user '%s'...\n", username)
+
+	// -m: Create home directory
+	// -s: Set shell to bash
+	userCmd := exec.Command("useradd", "-m", "-s", "/bin/bash", username)
+
+	if out, err := userCmd.CombinedOutput(); err != nil {
+		// Ignore error if user already exists (exit code 9)
+		// But CombinedOutput doesn't give exit code easily without type assertion.
+		// For robustness in "fix this now" mode, let's fail if it fails, assuming clean slate or manual cleanup.
+		return fmt.Errorf("failed to create user: %v, Output: %s", err, string(out))
+	}
+
+	// 2. Lookup the user to get UID (needed for systemctl and wait loop)
+	u, err := user.Lookup(username)
+	if err != nil {
+		return fmt.Errorf("failed to lookup user %s after creation: %v", username, err)
+	}
+
+	// 3. Enable Lingering
+	fmt.Printf("⚙️  Enabling systemd lingering for '%s'...\n", username)
+	lingerCmd := exec.Command("loginctl", "enable-linger", username)
+
+	if out, err := lingerCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to enable linger: %v, Output: %s", err, string(out))
+	}
+
+	// 4. Explicitly start the user service
+	// This forces systemd to create /run/user/<UID> and the bus socket immediately
+	serviceName := fmt.Sprintf("user@%s.service", u.Uid)
+	fmt.Printf("🚀 Starting systemd service '%s'...\n", serviceName)
+	startCmd := exec.Command("systemctl", "start", serviceName)
+	if out, err := startCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to start user service: %v, Output: %s", err, string(out))
+	}
+
+	// 5. Wait for Systemd User Manager (DBus socket)
+	busPath := fmt.Sprintf("/run/user/%s/bus", u.Uid)
+	fmt.Printf("⏳ Waiting for user bus at %s...\n", busPath)
+
+	timeout := 10 * time.Second
+	start := time.Now()
+	for time.Since(start) < timeout {
+		if _, err := os.Stat(busPath); err == nil {
+			fmt.Printf("✅ User bus is ready.\n")
+			fmt.Printf("✅ Success! Tenant '%s' is ready.\n", username)
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	return fmt.Errorf("timeout waiting for user bus at %s (is systemd-logind running?)", busPath)
+}
 
 // createTenantCmd represents the create-tenant command
 var createTenantCmd = &cobra.Command{
@@ -27,27 +87,9 @@ This command performs two main system operations:
 Example:
   pilot create-user --name="omar"`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// 1. Create the user
-		fmt.Printf("👤 Creating user '%s'...\n", tenantName)
-
-		// -m: Create home directory
-		// -s: Set shell to bash (helpful for debugging, even if not logged in often)
-		userCmd := exec.Command("useradd", "-m", "-s", "/bin/bash", tenantName)
-
-		if out, err := userCmd.CombinedOutput(); err != nil {
-			log.Fatalf("❌ Failed to create user: %v\nOutput: %s", err, string(out))
+		if err := CreateUser(tenantName); err != nil {
+			log.Fatal(err)
 		}
-
-		// 2. Enable Lingering
-		// This is critical for Socket Activation to work for non-logged-in users
-		fmt.Printf("⚙️  Enabling systemd lingering for '%s'...\n", tenantName)
-		lingerCmd := exec.Command("loginctl", "enable-linger", tenantName)
-
-		if out, err := lingerCmd.CombinedOutput(); err != nil {
-			log.Fatalf("❌ Failed to enable linger: %v\nOutput: %s", err, string(out))
-		}
-
-		fmt.Printf("✅ Success! Tenant '%s' is ready.\n", tenantName)
 	},
 }
 
