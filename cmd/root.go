@@ -1,13 +1,33 @@
-/*
-Copyright © 2025 Omar Altanbakji <omalton02@gmail.com>
-*/
 package cmd
 
 import (
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
 )
+
+var logFile *os.File
+
+func init() {
+	// Initialize Logging
+	logPath := "/var/log/pilot.log"
+
+	// Create/Open log file
+	var err error
+	logFile, err = os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		// Fallback to local file if /var/log permission denied (dev mode)
+		logPath = "pilot.log"
+		logFile, err = os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	}
+
+	if err == nil {
+		// Multiwriter: Log to both file and stdout
+		// BUT: Cobra prints to stdout/stderr too, so maybe just set output of standard log
+		log.SetOutput(logFile)
+	}
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

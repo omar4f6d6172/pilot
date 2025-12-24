@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 type SystemdConfig struct {
 	Username string
 	UID      string
+	Port     string
 	IdleTime string
 }
 
@@ -42,7 +44,7 @@ After=rest-api.service
 [Service]
 # Point to the internal localhost port (UID)
 # Exit if idle for {{.IdleTime}}
-ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time={{.IdleTime}} 127.0.0.1:{{.UID}}
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time={{.IdleTime}} 127.0.0.1:{{.Port}}
 NonBlocking=true
 `
 
@@ -55,8 +57,9 @@ PartOf=rest-api-proxy.service
 
 [Service]
 ExecStart=/usr/local/bin/user-rest-api
-Environment=PORT={{.UID}}
+Environment=PORT={{.Port}}
 Type=simple
+ExecStartPost=/bin/sleep 1
 `
 
 var setupTenantName string
@@ -79,9 +82,18 @@ func SetupSystemd(username, idleTime string) error {
 		return fmt.Errorf("could not find user %s: %v", username, err)
 	}
 
+	// Calculate a high port based on UID (e.g., UID + 10000)
+	// This avoids "permission denied" on ports < 1024
+	uidInt, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return fmt.Errorf("invalid UID %s: %v", u.Uid, err)
+	}
+	port := uidInt + 10000
+
 	config := SystemdConfig{
 		Username: username,
 		UID:      u.Uid,
+		Port:     fmt.Sprintf("%d", port),
 		IdleTime: idleTime,
 	}
 

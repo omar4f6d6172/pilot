@@ -87,9 +87,21 @@ This command performs two main system operations:
 Example:
   pilot create-user --name="omar"`,
 	Run: func(cmd *cobra.Command, args []string) {
+		LogAction("CREATE_USER", tenantName, "STARTED") // Log Start
 		if err := CreateUser(tenantName); err != nil {
+			LogAction("CREATE_USER", tenantName, "FAILED") // Log Failure
 			log.Fatal(err)
 		}
+
+		// Auto-run DB setup as per thesis requirements (Integrated Flow)
+		if err := SetupDatabase(tenantName); err != nil {
+			LogAction("SETUP_DB", tenantName, "FAILED")
+			log.Printf("⚠️  Database setup failed: %v", err)
+		} else {
+			LogAction("SETUP_DB", tenantName, "SUCCESS")
+		}
+
+		LogAction("CREATE_USER", tenantName, "SUCCESS") // Log Success
 	},
 }
 

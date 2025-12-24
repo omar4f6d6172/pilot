@@ -2,12 +2,18 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	osuser "os/user"
 	"strconv"
 	"strings"
 )
+
+// LogAction logs an administrative action to the centralized log file
+func LogAction(action, user, status string) {
+	log.Printf("ACTION=%s USER=%s STATUS=%s", action, user, status)
+}
 
 // runAsUser executes a command as a specific user using runuser.
 // It assumes the current process has root privileges for runuser.

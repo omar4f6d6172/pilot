@@ -13,7 +13,7 @@ var fakeUserCount int
 var fakeIdleTime string
 
 type FakeUser struct {
-	Username string `faker:"username"`
+	Username string `faker:"first_name"`
 }
 
 var createFakeUsersCmd = &cobra.Command{
@@ -48,7 +48,13 @@ var createFakeUsersCmd = &cobra.Command{
 				continue
 			}
 
-			// 3. Setup Caddy
+			// 3. Setup Database
+			if err := SetupDatabase(username); err != nil {
+				log.Printf("⚠️  Failed database for %s: %v\n", username, err)
+				continue
+			}
+
+			// 4. Setup Caddy
 			if err := SetupProxy(username, ""); err != nil {
 				log.Printf("⚠️  Failed caddy for %s: %v\n", username, err)
 				continue
@@ -71,5 +77,5 @@ func cleanUsername(s string) string {
 func init() {
 	rootCmd.AddCommand(createFakeUsersCmd)
 	createFakeUsersCmd.Flags().IntVarP(&fakeUserCount, "count", "n", 1, "Number of fake users to create")
-	createFakeUsersCmd.Flags().StringVarP(&fakeIdleTime, "idle", "i", "5min", "Idle time for systemd service (e.g. 10s, 1h)")
+	createFakeUsersCmd.Flags().StringVarP(&fakeIdleTime, "idle", "i", "1min", "Idle time for systemd service (e.g. 10s, 1h)")
 }
