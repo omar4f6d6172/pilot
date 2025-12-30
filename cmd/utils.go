@@ -6,13 +6,29 @@ import (
 	"os"
 	"os/exec"
 	osuser "os/user"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
+var userRegex = regexp.MustCompile(`^[a-z0-9_-]+$`) // Enforce safe usernames
+
+// LogAction logs an administrative action to the centralized log file
 // LogAction logs an administrative action to the centralized log file
 func LogAction(action, user, status string) {
-	log.Printf("ACTION=%s USER=%s STATUS=%s", action, user, status)
+	logMsg := fmt.Sprintf("ACTION=%s USER=%s STATUS=%s", action, user, status)
+
+	// Try to append to central log file
+	f, err := os.OpenFile("/var/log/pilot.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		defer f.Close()
+		logger := log.New(f, "", log.LstdFlags)
+		logger.Println(logMsg)
+	} else {
+		// Fallback to stdout if we can't write to the file (e.g. not root)
+		// This ensures we always see the log
+		log.Println(logMsg)
+	}
 }
 
 // runAsUser executes a command as a specific user using runuser.
@@ -75,5 +91,16 @@ func writeAsUser(username string, content string, filePath string) error {
 		return fmt.Errorf("failed to change ownership of file %s to user %s: %v", filePath, username, err)
 	}
 	fmt.Printf("💾 Wrote file %s and set ownership to %s.\n", filePath, username)
+	return nil
+}
+
+// ValidateUsername checks if the username is safe and valid
+func ValidateUsername(username string) error {
+	if len(username) == 0 {
+		return fmt.Errorf("username cannot be empty")
+	}
+	if !userRegex.MatchString(username) {
+		return fmt.Errorf("invalid username '%s': must contain only lowercase, digits, hyphens or underscores", username)
+	}
 	return nil
 }

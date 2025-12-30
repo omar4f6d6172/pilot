@@ -43,7 +43,7 @@ var createTenantCmdFull = &cobra.Command{
 		}
 
 		// 4. Setup Proxy
-		if err := SetupProxy(ctName, ctDomain); err != nil {
+		if err := SetupProxy(ctName, ctDomain, ""); err != nil {
 			log.Fatalf("❌ Proxy setup failed: %v", err)
 		}
 
@@ -57,6 +57,6 @@ func init() {
 	createTenantCmdFull.Flags().StringVarP(&ctName, "name", "n", "", "Tenant Name (linux username) [Required]")
 	createTenantCmdFull.Flags().StringVarP(&ctDomain, "domain", "d", "", "Custom Domain (e.g. app.example.com)")
 	createTenantCmdFull.Flags().StringVarP(&ctIdle, "idle", "i", "5min", "Idle timeout for socket activation")
-	
+
 	_ = createTenantCmdFull.MarkFlagRequired("name")
 }

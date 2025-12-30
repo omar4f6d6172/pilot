@@ -55,7 +55,7 @@ var createFakeUsersCmd = &cobra.Command{
 			}
 
 			// 4. Setup Caddy
-			if err := SetupProxy(username, ""); err != nil {
+			if err := SetupProxy(username, "", ""); err != nil {
 				log.Printf("⚠️  Failed caddy for %s: %v\n", username, err)
 				continue
 			}
